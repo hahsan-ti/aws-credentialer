@@ -14,66 +14,69 @@ import sys
 import boto3
 import botocore.exceptions
 
-HEADER = 'AWS Credentials Helper for MFA Profile'
+HEADER = '''AWS Credentials Helper for MFA Profile
+
+This helper fetches the AWS access key, secret, and session token for user's MFA
+profile and updates their ~/.aws/credentials file.
+'''
 EXAMPLE = '''Example(s):
 
 > aws-credentialer nnnnnn
 > aws-credentialer -d nnnnnn
 '''
 
-parser = argparse.ArgumentParser(description=HEADER, epilog=EXAMPLE)
-parser.add_argument('-d', '--debug', help='display debug logs', action='store_true')
-parser.add_argument('token', help='aws six (6) digit MFA token', type=str)
-parser._print_message(parser.description)
-args = parser.parse_args()
+def main(token):
+    if token is None or token == "" or len(token) != 6:
+        sys.exit('\nInvalid MFA token entered')
 
-if args.debug:
-    print('i was here')
-    logging.basicConfig(level=logging.DEBUG)
+    session = boto3.Session()
 
-session = boto3.Session()
+    try:
+        mfa_arn = session._session.full_config['profiles']['default']['mfa_arn']
+        logging.info('AWS MFA ARN: %s', mfa_arn)
+    except KeyError as e:
+        sys.exit('AWS MFA ARN in the default profile not found')
 
-try:
-    mfa_arn = session._session.full_config['profiles']['default']['mfa_arn']
-    logging.info('AWS MFA ARN: %s', mfa_arn)
-except KeyError as e:
-    sys.exit('AWS MFA ARN in the default profile not found')
+    logging.debug('Now: %s',datetime.utcnow())
+    sts = session.client('sts')
+    try:
+        validated_token = sts.get_session_token(DurationSeconds=86400,
+                                                SerialNumber=mfa_arn,
+                                                TokenCode=token)
+    except botocore.exceptions.ClientError as e:
+        sys.exit('Invalid or expired MFA token entered')
 
-token = args.token
-if token is None:
-    token = input('\nPlease enter your six (6) digit MFA token: ')
+    rem_cred = validated_token['Credentials']
+    logging.debug('AccessKeyId: %s', rem_cred.get("AccessKeyId"))
+    logging.debug('SecretAccessKey: %s', rem_cred.get("SecretAccessKey"))
+    logging.debug('SessionToken: %s', rem_cred.get("SessionToken"))
+    logging.debug('Expiration: %s', rem_cred.get("Expiration"))
 
-if token is None or token == "" or len(token) != 6:
-    sys.exit('Invalid MFA token entered')
+    FILEPATH = path.realpath(path.expanduser('~/.aws/credentials'))
 
-logging.debug('Now: %s',datetime.utcnow())
-sts = session.client('sts')
-try:
-    validated_token = sts.get_session_token(DurationSeconds=86400,
-                                            SerialNumber=mfa_arn,
-                                            TokenCode=token)
-except botocore.exceptions.ClientError as e:
-    sys.exit('Invalid or expired MFA token entered')
+    choice = input(f'Are you sure you want to modify {FILEPATH}? [yN]')
+    if choice.upper() != 'Y':
+        sys.exit(f'Not modifying {FILEPATH}')
 
-rem_cred = validated_token['Credentials']
-logging.debug('AccessKeyId: %s', rem_cred.get("AccessKeyId"))
-logging.debug('SecretAccessKey: %s', rem_cred.get("SecretAccessKey"))
-logging.debug('SessionToken: %s', rem_cred.get("SessionToken"))
-logging.debug('Expiration: %s', rem_cred.get("Expiration"))
+    loc_cred = configparser.ConfigParser()
+    with open(FILEPATH, 'r', encoding='utf8') as cf:
+        loc_cred.read_file(cf)
 
-FILEPATH = path.realpath(path.expanduser('~/.aws/credentials'))
+    loc_cred.set('mfa','aws_access_key_id', rem_cred.get('AccessKeyId'))
+    loc_cred.set('mfa','aws_secret_access_key', rem_cred.get('SecretAccessKey'))
+    loc_cred.set('mfa','aws_session_token', rem_cred.get('SessionToken'))
+    with open(FILEPATH, 'w', encoding='utf8') as cf:
+        loc_cred.write(cf)
+    print(f'{FILEPATH} updated')
 
-choice = input(f'Are you sure you want to modify {FILEPATH}? [yN]')
-if choice.upper() != 'Y':
-    sys.exit(f'Not modifying {FILEPATH}')
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser(description=HEADER, epilog=EXAMPLE)
+    parser.add_argument('-d', '--debug', help='display debug logs', action='store_true')
+    parser.add_argument('token', help='aws six (6) digit MFA token', type=str)
+    parser._print_message(parser.description)
+    args = parser.parse_args()
 
-loc_cred = configparser.ConfigParser()
-with open(FILEPATH, 'r', encoding='utf8') as cf:
-    loc_cred.read_file(cf)
+    if args.debug:
+        logging.basicConfig(level=logging.DEBUG)
 
-loc_cred.set('mfa','aws_access_key_id', rem_cred.get('AccessKeyId'))
-loc_cred.set('mfa','aws_secret_access_key', rem_cred.get('SecretAccessKey'))
-loc_cred.set('mfa','aws_session_token', rem_cred.get('SessionToken'))
-with open(FILEPATH, 'w', encoding='utf8') as cf:
-    loc_cred.write(cf)
-print(f'{FILEPATH} updated')
+    main(args.token)
