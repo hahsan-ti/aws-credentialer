@@ -1,0 +1,31 @@
+[project]
+name = "aws-credentialer"
+version = "0.1.0"
+authors = [
+  { name="Hidayatullah Ahsan", email="hahsan@techicon.net" }
+]
+description = "An AWS MFA Credentials Updater"
+readme = "README.md"
+requires-python = ">=3.9"
+dependencies = [
+    "boto3==1.26.69",
+    "botocore==1.29.69",
+    "jmespath==1.0.1",
+    "python-dateutil==2.8.2",
+    "s3transfer==0.6.0",
+    "six==1.16.0",
+    "urllib3==1.26.14",
+]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
+
+[project.urls]
+"Homepage" = "https://github.com/hahsan-ti/aws-credentialer"
+"Bug Tracker" = "https://github.com/hahsan-ti/aws-credentialer/issues"
+
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
