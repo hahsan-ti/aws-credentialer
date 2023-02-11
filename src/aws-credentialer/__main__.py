@@ -2,10 +2,9 @@
 """
 An AWS MFA Credentials Helper
 """
-#pylint: disable=protected-access
+#pylint: disable=protected-access, import-error
 
 from os import path
-from argparse import RawTextHelpFormatter
 from datetime import datetime
 
 import argparse
