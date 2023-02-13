@@ -25,7 +25,12 @@ EXAMPLE = '''Example(s):
 > aws-credentialer -d nnnnnn
 '''
 
-def main(token):
+def main(token:str):
+    '''The main function.
+
+    Keyword arguments:
+    token -- the six (6) digit AWS token
+    '''
     if token is None or token == "" or len(token) != 6:
         sys.exit('\nInvalid MFA token entered')
 
@@ -34,7 +39,8 @@ def main(token):
     try:
         mfa_arn = session._session.full_config['profiles']['default']['mfa_arn']
         logging.info('AWS MFA ARN: %s', mfa_arn)
-    except KeyError as e:
+    except KeyError as exp:
+        logging.error('%s', exp)
         sys.exit('AWS MFA ARN in the default profile not found')
 
     logging.debug('Now: %s',datetime.utcnow())
@@ -43,7 +49,8 @@ def main(token):
         validated_token = sts.get_session_token(DurationSeconds=86400,
                                                 SerialNumber=mfa_arn,
                                                 TokenCode=token)
-    except botocore.exceptions.ClientError as e:
+    except botocore.exceptions.ClientError as exp:
+        logging.error('%s', exp)
         sys.exit('Invalid or expired MFA token entered')
 
     rem_cred = validated_token['Credentials']
@@ -52,22 +59,22 @@ def main(token):
     logging.debug('SessionToken: %s', rem_cred.get("SessionToken"))
     logging.debug('Expiration: %s', rem_cred.get("Expiration"))
 
-    FILEPATH = path.realpath(path.expanduser('~/.aws/credentials'))
+    filepath = path.realpath(path.expanduser('~/.aws/credentials'))
 
-    choice = input(f'Are you sure you want to modify {FILEPATH}? [yN]')
+    choice = input(f'Are you sure you want to modify {filepath}? [yN]')
     if choice.upper() != 'Y':
-        sys.exit(f'Not modifying {FILEPATH}')
+        sys.exit(f'Not modifying {filepath}')
 
     loc_cred = configparser.ConfigParser()
-    with open(FILEPATH, 'r', encoding='utf8') as cf:
-        loc_cred.read_file(cf)
+    with open(filepath, 'r', encoding='utf8') as file:
+        loc_cred.read_file(file)
 
     loc_cred.set('mfa','aws_access_key_id', rem_cred.get('AccessKeyId'))
     loc_cred.set('mfa','aws_secret_access_key', rem_cred.get('SecretAccessKey'))
     loc_cred.set('mfa','aws_session_token', rem_cred.get('SessionToken'))
-    with open(FILEPATH, 'w', encoding='utf8') as cf:
-        loc_cred.write(cf)
-    print(f'{FILEPATH} updated')
+    with open(filepath, 'w', encoding='utf8') as file:
+        loc_cred.write(file)
+    print(f'{filepath} updated')
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=HEADER, epilog=EXAMPLE)
