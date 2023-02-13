@@ -7,7 +7,7 @@
 Using `pip`
 
 ```sh
-pip install aws_credentialer
+pip install aws-credentialer
 ```
 
 ## Usage Example
