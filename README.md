@@ -22,5 +22,7 @@ Help is available with the `-h` parameter.
 
 ## Release History
 
+* 0.1.1
+  * Updated packages.
 * 0.1.0
   * The first proper release.
