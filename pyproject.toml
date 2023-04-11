@@ -1,6 +1,6 @@
 [project]
 name = "aws-credentialer"
-version = "0.1.1"
+version = "0.1.2"
 authors = [
   { name="Hidayatullah Ahsan", email="hahsan@techicon.net" }
 ]
